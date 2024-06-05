@@ -75,7 +75,7 @@ export async function run(): Promise<void> {
     }
 
     // Run the SwiftLint binary and capture its standard output
-    const swiftlintArgs = ['lint', '--reporter=json']
+    const swiftlintArgs = ['lint', '--reporter=github-actions-logging']
     const additionalArgs = core.getInput('args')
     if (additionalArgs) {
       swiftlintArgs.push(...tr.argStringToArray(additionalArgs))
@@ -87,43 +87,6 @@ export async function run(): Promise<void> {
         ignoreReturnCode: true
       }
     )
-
-    // Parse the SwiftLint's JSON output
-    // and emit annotations
-    const result: Entry[] = JSON.parse(output.stdout)
-
-    for (const entry of result) {
-      let annotationFunc: (
-        message: string | Error,
-        properties?: core.AnnotationProperties
-      ) => void
-
-      switch (entry.severity.toLowerCase()) {
-        case 'warning':
-          annotationFunc = core.warning
-          break
-        case 'error':
-        default:
-          annotationFunc = core.error
-          break
-      }
-
-      // relativize the file path to the working directory
-      if (entry.file) {
-        entry.file = path.relative(
-          process.env.GITHUB_WORKSPACE || process.cwd(),
-          entry.file
-        )
-      }
-
-      annotationFunc(entry.reason, {
-        title: `${entry.type} (${entry.rule_id})`,
-        file: entry.file,
-        startLine: entry.line,
-        startColumn: entry.character
-      })
-    }
-
     process.exit(output.exitCode)
   } catch (error) {
     // Fail the workflow run if an error occurs
